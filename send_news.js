@@ -5,40 +5,43 @@ const RSS_URL = "https://news.google.com/rss/search?q=%EB%A0%89%EC%84%9C%EC%8A%A
 const WEBHOOK_URL = process.env.JANDI_WEBHOOK_URL;
 
 async function main() {
+  if (!WEBHOOK_URL) {
+    console.error("❌ ERROR: JANDI_WEBHOOK_URL 환경변수가 없습니다.");
+    process.exit(1);
+  }
+
+  // 날짜 생성
+  const today = new Date();
+  const month = today.getMonth() + 1;
+  const day = today.getDate();
+  const dateLabel = `${month}/${day}`;  // 또는 `${month}월 ${day}일`
+
   const parser = new Parser();
   const feed = await parser.parseURL(RSS_URL);
 
-  // 🔥 네이버 뉴스 기사만 필터링
-  const naverNewsOnly = feed.items
-    .filter(item => item.link.includes("news.naver.com"))
-    .slice(0, 5);
-
-  const items = naverNewsOnly
+  const items = feed.items.slice(0, 5)
     .map(i => `• [${i.title}](${i.link})`)
     .join("\n");
 
   const payload = {
-    body: "오늘의 뉴스 레터",
+    body: `오늘의 뉴스 레터`,
     connectColor: "#00AACC",
     connectInfo: [
       {
-        title: "렉서스 뉴스",
+        title: `렉서스 뉴스 (${dateLabel})`,
         description: items
       }
     ]
   };
 
-  await fetch(WEBHOOK_URL, {
+  const res = await fetch(WEBHOOK_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   });
 
-  console.log("전송 완료!");
+  console.log("전송 상태:", res.status);
 }
-
-main();
 
 main()
   .catch(err => console.error("오류 발생:", err));
-
