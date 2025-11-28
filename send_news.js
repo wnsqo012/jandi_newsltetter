@@ -1,7 +1,7 @@
 const Parser = require('rss-parser');
 const fetch = require('node-fetch');
 
-const RSS_URL = "https://news.google.com/rss/search?q=렉서스+site:naver.com&hl=ko&gl=KR&ceid=KR:ko";
+const RSS_URL = "https://news.google.com/rss/search?q=%EB%A0%89%EC%84%9C%EC%8A%A4+site:naver.com&hl=ko&gl=KR&ceid=KR:ko";
 const WEBHOOK_URL = process.env.JANDI_WEBHOOK_URL;
 
 async function main() {
