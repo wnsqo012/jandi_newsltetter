@@ -1,48 +1,87 @@
-const Parser = require('rss-parser');
-const fetch = require('node-fetch');
+const fetch = require("node-fetch");
 
-const RSS_URL = "https://news.google.com/rss/search?q=%EB%A0%89%EC%84%9C%EC%8A%A4+site:naver.com&hl=ko&gl=KR&ceid=KR:ko";
+const KEYWORD = "렉서스"; // ← 키워드 바꾸고 싶으면 여기만 수정
 const WEBHOOK_URL = process.env.JANDI_WEBHOOK_URL;
-
-// Google News RSS의 guid(item.id)에서 네이버 뉴스 원본 링크 추출
-function extractNaverUrlFromGuid(guid) {
-  const match = guid.match(/https?:\/\/(?:n|m)\.news\.naver\.com\/[^ \n"]+/);
-  return match ? match[0] : null;
-}
+const NAVER_CLIENT_ID = process.env.NAVER_CLIENT_ID;
+const NAVER_CLIENT_SECRET = process.env.NAVER_CLIENT_SECRET;
 
 async function main() {
-  const parser = new Parser();
-  const feed = await parser.parseURL(RSS_URL);
+  // 환경변수 체크
+  if (!WEBHOOK_URL) {
+    console.error("❌ 환경변수 JANDI_WEBHOOK_URL이 없습니다.");
+    process.exit(1);
+  }
+  if (!NAVER_CLIENT_ID || !NAVER_CLIENT_SECRET) {
+    console.error("❌ NAVER_CLIENT_ID 또는 NAVER_CLIENT_SECRET이 없습니다.");
+    process.exit(1);
+  }
 
-  // Google News RSS → guid에서 원본 네이버 뉴스만 추출
-  const naverNewsOnly = feed.items
-    .map(item => {
-      const original = extractNaverUrlFromGuid(item.id || "");
-      return {
-        title: item.title,
-        link: original
-      };
-    })
-    .filter(item => item.link)   // null 제거
-    .slice(0, 5);
+  // 오늘 날짜 라벨 생성
+  const today = new Date();
+  const month = today.getMonth() + 1;
+  const day = today.getDate();
+  const dateLabel = `${month}/${day}`; // 예: 11/28
 
-  const items = naverNewsOnly
-    .map(i => `• [${i.title}](${i.link})`)
-    .join("\n");
+  // 네이버 뉴스 검색 API URL
+  const apiUrl =
+    "https://openapi.naver.com/v1/search/news.json?query=" +
+    encodeURIComponent(KEYWORD) +
+    "&display=5&sort=date";
 
+  // 네이버 뉴스 API 호출
+  const newsRes = await fetch(apiUrl, {
+    headers: {
+      "X-Naver-Client-Id": NAVER_CLIENT_ID,
+      "X-Naver-Client-Secret": NAVER_CLIENT_SECRET,
+    },
+  });
+
+  if (!newsRes.ok) {
+    console.error("❌ 네이버 뉴스 API 호출 실패:", newsRes.status, await newsRes.text());
+    process.exit(1);
+  }
+
+  const data = await newsRes.json();
+  const items = data.items || [];
+
+  // 뉴스가 없을 경우 안내 메시지
+  let newsText = "";
+  if (items.length === 0) {
+    newsText = "오늘은 관련된 네이버 뉴스가 없습니다.";
+  } else {
+    newsText = items
+      .map((it) => {
+        const title = it.title.replace(/<[^>]+>/g, ""); // HTML 태그 제거
+        const link = it.link;
+        return `• [${title}](${link})`;
+      })
+      .join("\n");
+  }
+
+  // 잔디 메시지 Payload
   const payload = {
     body: `오늘의 뉴스 레터`,
     connectColor: "#00AACC",
-    connectInfo: [{ title: "렉서스 뉴스", description: items }]
+    connectInfo: [
+      {
+        title: `${KEYWORD} 네이버 뉴스 (${dateLabel})`,
+        description: newsText,
+      },
+    ],
   };
 
-  await fetch(WEBHOOK_URL, {
+  // 잔디 Webhook 발송
+  const jandiRes = await fetch(WEBHOOK_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
 
-  console.log("전송 완료!");
+  console.log("📨 잔디 응답 코드:", jandiRes.status);
+  console.log("작업 완료!");
 }
 
-main();
+main().catch((err) => {
+  console.error("❌ 스크립트 오류:", err);
+  process.exit(1);
+});
