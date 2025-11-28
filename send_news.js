@@ -19,7 +19,9 @@ async function main() {
   const parser = new Parser();
   const feed = await parser.parseURL(RSS_URL);
 
-  const items = feed.items.slice(0, 5)
+  const items = feed.items
+    .filter(item => item.link.includes("news.naver.com"))
+    .slice(0, 5)
     .map(i => `• [${i.title}](${i.link})`)
     .join("\n");
 
