@@ -1,0 +1,20 @@
+name: Daily Naver News to JANDI (Node.js)
+
+on:
+  schedule:
+    - cron: "0 0 * * *"   # 매일 KST 오전 9시 실행 (UTC 0시 = KST 9시)
+  workflow_dispatch:        # 수동 실행 허용
+
+jobs:
+  send-news:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Run Node.js script
+        env:
+          JANDI_WEBHOOK_URL: ${{ secrets.JANDI_WEBHOOK_URL }}
+        run: |
+          npm install rss-parser node-fetch@2
+          node send_news.js
