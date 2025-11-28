@@ -10,6 +10,12 @@ async function main() {
     process.exit(1);
   }
 
+  // 날짜 생성
+  const today = new Date();
+  const month = today.getMonth() + 1;
+  const day = today.getDate();
+  const dateLabel = `${month}/${day}`;  // 또는 `${month}월 ${day}일`
+
   const parser = new Parser();
   const feed = await parser.parseURL(RSS_URL);
 
@@ -22,7 +28,7 @@ async function main() {
     connectColor: "#00AACC",
     connectInfo: [
       {
-        title: "키워드 뉴스",
+        title: `렉서스 뉴스 (${dateLabel})`,
         description: items
       }
     ]
@@ -39,3 +45,4 @@ async function main() {
 
 main()
   .catch(err => console.error("오류 발생:", err));
+
